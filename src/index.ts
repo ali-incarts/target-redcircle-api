@@ -5,11 +5,12 @@
  * @related controllers/stock.ts
  */
 
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
 import express, {
   Application, Request, Response, NextFunction,
 } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { smartProductSelect, healthCheck } from './controllers/stock';
 import {
@@ -19,7 +20,6 @@ import {
 } from './controllers/products';
 import { swaggerSpec } from './config/swagger';
 
-// Load environment variables
 dotenv.config();
 
 // ============================================================================
