@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output (will be built in Docker)
+dist
+
+# Git
+.git
+.gitignore
+
+# Environment files (set via Cloud Run env vars)
+.env
+.env.*
+
+# Documentation
+*.md
+docs/
+HOW_IT_WORKS.md
+DEPLOYMENT.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tgz
+.eslintcache

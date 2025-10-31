@@ -6,6 +6,8 @@ Smart product selection backend with automatic backup substitution for Target pr
 
 - **New to this project?** Start with [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) - Simple explanations of how everything works
 - **Setting up?** Continue reading this README
+- **Deploying to production?** See [DEPLOYMENT.md](./DEPLOYMENT.md) - Cloud Run deployment with IAM authentication
+- **API Documentation** Visit `/api-docs` when server is running for interactive Swagger UI
 - **Found bugs?** Check [FIXES.md](./FIXES.md) for known issues and solutions
 - **Need specs?** See [docs/isntructions-from-walmart-dev.md](./docs/isntructions-from-walmart-dev.md)
 
@@ -76,6 +78,16 @@ pnpm start
 The server will start on `http://localhost:3000`
 
 ## API Documentation
+
+### Interactive Swagger UI
+
+When the server is running, visit **http://localhost:3000/api-docs** for interactive API documentation where you can:
+- View all endpoints with detailed request/response schemas
+- Test API calls directly from your browser
+- See example requests and responses
+- Explore the OpenAPI 3.0 specification
+
+You can also access the raw OpenAPI spec at **http://localhost:3000/api-docs.json**
 
 ### Endpoints
 
