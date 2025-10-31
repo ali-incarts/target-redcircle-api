@@ -101,7 +101,13 @@ export async function selectAvailableProducts(
 
   // Extract requested options or use defaults
   const requestedMode = request.cartUrlOptions?.mode || 'auto';
-  const requestedStoreIdMode = request.cartUrlOptions?.includeStoreId || 'never';
+
+  // Determine if we fell back to longLink/customUrl instead of generating a Target URL
+  // This happens when:
+  // - All products unavailable
+  // - Multiple products selected (Target doesn't support multi-item cart URLs)
+  // - allowPdp=false (even with single product)
+  const didFallback = finalCartUrlType !== 'pdp';
 
   return {
     redirectUrl,
@@ -112,8 +118,8 @@ export async function selectAvailableProducts(
     storeIdAttached: actualStoreIdAttached,
     cartOptionsSummary: {
       mode: requestedMode, // What the client requested
-      includeStoreId: requestedStoreIdMode, // What the client requested for store ID
-      fallbackApplied: allProductsUnavailable,
+      includeStoreId: 'never', // Target never includes store IDs (what was actually done)
+      fallbackApplied: didFallback, // True if we used longLink/customUrl instead of PDP
       finalType: finalCartUrlType, // What we actually generated
     },
   };

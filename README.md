@@ -2,6 +2,13 @@
 
 Smart product selection backend with automatic backup substitution for Target products using the RedCircle API.
 
+## 📚 Quick Links
+
+- **New to this project?** Start with [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) - Simple explanations of how everything works
+- **Setting up?** Continue reading this README
+- **Found bugs?** Check [FIXES.md](./FIXES.md) for known issues and solutions
+- **Need specs?** See [docs/isntructions-from-walmart-dev.md](./docs/isntructions-from-walmart-dev.md)
+
 ## Overview
 
 This backend implements the **Smart Product Selection API** specification, providing real-time inventory checking and intelligent product substitution when items are out of stock.
