@@ -1,0 +1,42 @@
+{
+  "name": "target-redcircle-api-backend",
+  "version": "1.0.0",
+  "description": "Target RedCircle API backend with smart product selection",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "target",
+    "redcircle",
+    "api",
+    "inventory",
+    "stock"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "node-cache": "^5.1.2",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.20",
+    "@types/cors": "^2.8.15",
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.2",
+    "ts-node-dev": "^2.0.0",
+    "eslint": "^8.52.0",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "@typescript-eslint/parser": "^6.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
