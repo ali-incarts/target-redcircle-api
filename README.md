@@ -4,6 +4,7 @@ Smart product selection backend with automatic backup substitution for Target pr
 
 ## 📚 Quick Links
 
+- **Redcirle api docs** : https://docs.trajectdata.com/redcircleapi/collections-api/overview 
 - **New to this project?** Start with [HOW_IT_WORKS.md](./HOW_IT_WORKS.md) - Simple explanations of how everything works
 - **Setting up?** Continue reading this README
 - **Deploying to production?** See [DEPLOYMENT.md](./DEPLOYMENT.md) - Cloud Run deployment with IAM authentication

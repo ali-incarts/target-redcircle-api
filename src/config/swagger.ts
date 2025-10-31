@@ -134,8 +134,8 @@ Requires RedCircle API key configured via environment variable.
             zipCode: {
               type: 'string',
               example: '04457',
-              pattern: '^[0-9]{5}$',
-              description: '5-digit ZIP code for stock availability checking',
+              pattern: '^\\d{5}(-\\d{4})?$',
+              description: 'US ZIP code for stock availability checking (5-digit or 5+4 format, e.g., "12345" or "12345-6789")',
             },
             storeId: {
               type: 'string',
@@ -235,7 +235,7 @@ Requires RedCircle API key configured via environment variable.
             storeIdAttached: {
               type: 'string',
               nullable: true,
-              description: 'Store ID included in the URL (currently not supported for Target, always null)',
+              description: 'Store ID included in the URL (omitted for Target since product URLs do not support store parameters)',
             },
             cartOptionsSummary: {
               $ref: '#/components/schemas/CartOptionsSummary',
@@ -364,6 +364,38 @@ Requires RedCircle API key configured via environment variable.
                 credits_used: { type: 'number' },
                 credits_remaining: { type: 'number' },
               },
+              description: 'API request information and credits usage',
+            },
+            request_metadata: {
+              type: 'object',
+              properties: {
+                created_at: { type: 'string', format: 'date-time' },
+                processed_at: { type: 'string', format: 'date-time' },
+                total_time_taken: { type: 'number', description: 'Processing time in milliseconds' },
+                target_url: { type: 'string' },
+              },
+              description: 'Request timing and processing metadata',
+            },
+            request_parameters: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', example: 'product' },
+                tcin: { type: 'string', example: '78025470' },
+                gtin: { type: 'string', example: '012345678901' },
+              },
+              description: 'Parameters used for the API request',
+            },
+            location_info: {
+              type: 'object',
+              properties: {
+                address: { type: 'string' },
+                city: { type: 'string' },
+                state: { type: 'string' },
+                zipcode: { type: 'string' },
+                store_name: { type: 'string' },
+                store_id: { type: 'string' },
+              },
+              description: 'Store location information used for stock availability',
             },
           },
         },
@@ -413,16 +445,101 @@ Requires RedCircle API key configured via environment variable.
                 results: {
                   type: 'array',
                   items: { $ref: '#/components/schemas/SearchResultItem' },
+                  description: 'Array of search result items',
                 },
                 pagination: {
                   type: 'object',
                   properties: {
-                    current_page: { type: 'number' },
-                    total_pages: { type: 'number' },
-                    total_results: { type: 'number' },
+                    current: {
+                      type: 'object',
+                      properties: {
+                        page: { type: 'number', example: 1 },
+                        link: { type: 'string', example: 'https://www.target.com/s?searchTerm=test&page=1' },
+                      },
+                    },
+                    next: {
+                      type: 'object',
+                      nullable: true,
+                      properties: {
+                        page: { type: 'number', example: 2 },
+                        link: { type: 'string', example: 'https://www.target.com/s?searchTerm=test&page=2' },
+                      },
+                      description: 'Next page information (null if on last page)',
+                    },
+                    total_pages: { type: 'number', example: 10 },
+                    total_results: { type: 'number', example: 245 },
                   },
                 },
+                facets: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      display_name: { type: 'string' },
+                      values: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            name: { type: 'string' },
+                            id: { type: 'string' },
+                            count: { type: 'number' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  description: 'Available filters/facets for refining search results',
+                },
+                categories: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      link: { type: 'string' },
+                      category_id: { type: 'string' },
+                    },
+                  },
+                  description: 'Related categories for the search',
+                },
+                related_queries: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      query: { type: 'string' },
+                      link: { type: 'string' },
+                    },
+                  },
+                  description: 'Suggested related search queries',
+                },
+                message: {
+                  type: 'string',
+                  example: 'No products found matching your search',
+                  description: 'Optional message (e.g., for empty search results)',
+                },
               },
+            },
+            request_info: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                credits_used: { type: 'number' },
+                credits_remaining: { type: 'number' },
+              },
+              description: 'API request information and credits usage',
+            },
+            request_metadata: {
+              type: 'object',
+              properties: {
+                created_at: { type: 'string', format: 'date-time' },
+                processed_at: { type: 'string', format: 'date-time' },
+                total_time_taken: { type: 'number', description: 'Processing time in milliseconds' },
+                target_url: { type: 'string' },
+              },
+              description: 'Request timing and processing metadata',
             },
           },
         },
