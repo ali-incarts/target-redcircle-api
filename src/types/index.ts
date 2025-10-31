@@ -261,7 +261,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public code: string | number,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -275,7 +275,7 @@ export class ValidationError extends Error {
   constructor(
     message: string,
     public field?: string,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ValidationError';

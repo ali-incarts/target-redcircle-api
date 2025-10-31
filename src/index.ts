@@ -5,7 +5,9 @@
  * @related controllers/stock.ts
  */
 
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, {
+  Application, Request, Response, NextFunction,
+} from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { smartProductSelect, healthCheck } from './controllers/stock';
@@ -35,7 +37,7 @@ app.use(
       : '*',
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-  })
+  }),
 );
 
 /**
@@ -154,8 +156,8 @@ function startServer(): void {
   // Validate environment variables
   if (!process.env.TARGET_API_KEY && process.env.NODE_ENV !== 'test') {
     console.warn(
-      '⚠️  WARNING: TARGET_API_KEY not set in environment variables. ' +
-      'API calls will fail. Please set it in your .env file.'
+      '⚠️  WARNING: TARGET_API_KEY not set in environment variables. '
+      + 'API calls will fail. Please set it in your .env file.',
     );
   }
 

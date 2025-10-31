@@ -12,8 +12,7 @@ import {
   ValidationError,
   ApiError,
 } from '../types';
-import { selectAvailableProducts } from '../services/stock/product-selector';
-import { logApiPerformance } from '../services/stock/product-selector';
+import { selectAvailableProducts, logApiPerformance } from '../services/stock/product-selector';
 
 // ============================================================================
 // Controller Entry Point
@@ -72,14 +71,14 @@ export async function smartProductSelect(req: Request, res: Response): Promise<v
     const response: SmartSelectionResponse = await selectAvailableProducts(
       request,
       zipCode,
-      storeId
+      storeId,
     );
 
     // Step 4: Log performance metrics
     const durationMs = Date.now() - startTime;
     const totalProducts = request.backups.reduce(
       (sum, group) => sum + 1 + group.backupIds.length,
-      0
+      0,
     );
 
     logApiPerformance({
@@ -104,48 +103,56 @@ export async function smartProductSelect(req: Request, res: Response): Promise<v
 /**
  * Validate smart selection request payload
  *
- * @param body - Request body
+ * @param body - Request body (unknown, validated at runtime)
  * @returns ValidationError or null if valid
  */
-function validateRequest(body: any): ValidationError | null {
+function validateRequest(body: unknown): ValidationError | null {
+  // Type guard: ensure body is an object
+  if (!body || typeof body !== 'object') {
+    return new ValidationError('Request body must be a JSON object', 'body');
+  }
+
+  // Now we know body is an object, cast for property access
+  const data = body as Record<string, unknown>;
+
   // Required fields
-  if (!body.shortLink || typeof body.shortLink !== 'string') {
+  if (!data.shortLink || typeof data.shortLink !== 'string') {
     return new ValidationError('shortLink is required and must be a string', 'shortLink');
   }
 
-  if (!body.longLink || typeof body.longLink !== 'string') {
+  if (!data.longLink || typeof data.longLink !== 'string') {
     return new ValidationError('longLink is required and must be a string', 'longLink');
   }
 
-  if (!body.zipCode || typeof body.zipCode !== 'string') {
+  if (!data.zipCode || typeof data.zipCode !== 'string') {
     return new ValidationError('zipCode is required and must be a string', 'zipCode');
   }
 
   // Validate ZIP code format (5 digits or 5+4 format)
-  if (!/^\d{5}(-\d{4})?$/.test(body.zipCode)) {
+  if (!/^\d{5}(-\d{4})?$/.test(data.zipCode)) {
     return new ValidationError(
       'zipCode must be in format 12345 or 12345-6789',
-      'zipCode'
+      'zipCode',
     );
   }
 
   // Validate backups array
-  if (!body.backups || !Array.isArray(body.backups)) {
+  if (!data.backups || !Array.isArray(data.backups)) {
     return new ValidationError('backups is required and must be an array', 'backups');
   }
 
-  if (body.backups.length === 0) {
+  if (data.backups.length === 0) {
     return new ValidationError('backups array cannot be empty', 'backups');
   }
 
   // Validate each backup group
-  for (let i = 0; i < body.backups.length; i++) {
-    const group = body.backups[i];
+  for (let i = 0; i < data.backups.length; i++) {
+    const group = data.backups[i];
 
     if (!group.primaryId || typeof group.primaryId !== 'string') {
       return new ValidationError(
         `backups[${i}].primaryId is required and must be a string`,
-        `backups[${i}].primaryId`
+        `backups[${i}].primaryId`,
       );
     }
 
@@ -154,14 +161,14 @@ function validateRequest(body: any): ValidationError | null {
       return new ValidationError(
         `backups[${i}].primaryId must be an 8-digit TCIN`,
         `backups[${i}].primaryId`,
-        { value: group.primaryId }
+        { value: group.primaryId },
       );
     }
 
     if (!group.backupIds || !Array.isArray(group.backupIds)) {
       return new ValidationError(
         `backups[${i}].backupIds is required and must be an array`,
-        `backups[${i}].backupIds`
+        `backups[${i}].backupIds`,
       );
     }
 
@@ -172,7 +179,7 @@ function validateRequest(body: any): ValidationError | null {
       if (typeof backupId !== 'string') {
         return new ValidationError(
           `backups[${i}].backupIds[${j}] must be a string`,
-          `backups[${i}].backupIds[${j}]`
+          `backups[${i}].backupIds[${j}]`,
         );
       }
 
@@ -180,27 +187,27 @@ function validateRequest(body: any): ValidationError | null {
         return new ValidationError(
           `backups[${i}].backupIds[${j}] must be an 8-digit TCIN`,
           `backups[${i}].backupIds[${j}]`,
-          { value: backupId }
+          { value: backupId },
         );
       }
     }
   }
 
   // Optional fields validation
-  if (body.storeId !== undefined && typeof body.storeId !== 'string') {
+  if (data.storeId !== undefined && typeof data.storeId !== 'string') {
     return new ValidationError('storeId must be a string', 'storeId');
   }
 
-  if (body.customUrl !== undefined && typeof body.customUrl !== 'string') {
+  if (data.customUrl !== undefined && typeof data.customUrl !== 'string') {
     return new ValidationError('customUrl must be a string', 'customUrl');
   }
 
-  if (body.allowPdp !== undefined && typeof body.allowPdp !== 'boolean') {
+  if (data.allowPdp !== undefined && typeof data.allowPdp !== 'boolean') {
     return new ValidationError('allowPdp must be a boolean', 'allowPdp');
   }
 
   // cartUrlOptions validation (accept but ignore for Target)
-  if (body.cartUrlOptions !== undefined && typeof body.cartUrlOptions !== 'object') {
+  if (data.cartUrlOptions !== undefined && typeof data.cartUrlOptions !== 'object') {
     return new ValidationError('cartUrlOptions must be an object', 'cartUrlOptions');
   }
 

@@ -36,7 +36,7 @@ import { checkBulkStoreStock } from '../target/api';
  * console.log(availability?.inStock); // true/false
  */
 export async function checkBatchAvailability(
-  params: StockCheckParams
+  params: StockCheckParams,
 ): Promise<StockCheckResult> {
   const { productIds, zipCode, storeId } = params;
 
@@ -55,9 +55,9 @@ export async function checkBatchAvailability(
     // Process each product result
     productIds.forEach((productId) => {
       try {
-        const stockData = stockResults.get(productId) ||
-                         stockResults.get(productId.toString()) ||
-                         stockResults.get(Number(productId).toString());
+        const stockData = stockResults.get(productId)
+                         || stockResults.get(productId.toString())
+                         || stockResults.get(Number(productId).toString());
 
         if (!stockData || !stockData.Store_stock_results) {
           // Product not found or no stock data
@@ -120,8 +120,8 @@ export async function checkBatchAvailability(
 
         if (process.env.NODE_ENV === 'development') {
           console.log(
-            `[Availability] ${productId}: ${availability.inStock ? 'IN STOCK' : 'OUT OF STOCK'} ` +
-            `at ${selectedStore.Store_name} (${selectedStore.Stock_level} units)`
+            `[Availability] ${productId}: ${availability.inStock ? 'IN STOCK' : 'OUT OF STOCK'} `
+            + `at ${selectedStore.Store_name} (${selectedStore.Stock_level} units)`,
           );
         }
       } catch (error) {
@@ -182,7 +182,7 @@ function selectBestStore(
     Store_name: string;
     Distance: number;
   }>,
-  preferredStoreId?: string
+  preferredStoreId?: string,
 ) {
   if (stores.length === 0) {
     return undefined;
@@ -217,7 +217,7 @@ function selectBestStore(
 function setAvailabilityForAllKeyTypes(
   map: Map<string, ProductAvailability>,
   productId: string | number,
-  availability: ProductAvailability
+  availability: ProductAvailability,
 ): void {
   // Store as original type
   map.set(productId.toString(), availability);
@@ -259,13 +259,13 @@ export function isProductAvailable(availability: ProductAvailability | undefined
  */
 export function getAvailability(
   availabilityMap: Map<string, ProductAvailability>,
-  productId: string | number
+  productId: string | number,
 ): ProductAvailability | undefined {
   // Try multiple key formats
   return (
-    availabilityMap.get(productId.toString()) ||
-    availabilityMap.get(String(productId)) ||
-    availabilityMap.get(Number(productId).toString())
+    availabilityMap.get(productId.toString())
+    || availabilityMap.get(String(productId))
+    || availabilityMap.get(Number(productId).toString())
   );
 }
 

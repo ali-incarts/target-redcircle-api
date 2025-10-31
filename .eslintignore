@@ -1,0 +1,23 @@
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+
+# OS files
+.DS_Store
+
+# Markdown files (documentation)
+*.md

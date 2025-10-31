@@ -65,7 +65,7 @@ export const productCache = new NodeCache({
 export function generateStockCacheKey(
   zipCode: string,
   productIds: string[],
-  storeId?: string
+  storeId?: string,
 ): string {
   // Sort product IDs for consistent cache keys regardless of order
   const sortedIds = [...productIds].sort().join(',');
@@ -84,7 +84,7 @@ export function generateStockCacheKey(
 export function generateProductStockCacheKey(
   zipCode: string,
   tcin: string,
-  storeId?: string
+  storeId?: string,
 ): string {
   return `stock:${zipCode}:${storeId || 'undefined'}:${tcin}`;
 }
@@ -132,7 +132,7 @@ export function setCachedValue<T>(
   cache: NodeCache,
   key: string,
   value: T,
-  ttl?: number
+  ttl?: number,
 ): boolean {
   // Only pass TTL if explicitly provided, otherwise use cache default
   // Note: ttl=0 means "never expire" in node-cache, so we must not pass 0 accidentally
@@ -202,7 +202,7 @@ export function getCacheStats(cache: NodeCache) {
 export async function warmCache<T>(
   productIds: string[],
   zipCode: string,
-  fetchFunction: (tcin: string, zipCode: string) => Promise<T>
+  fetchFunction: (tcin: string, zipCode: string) => Promise<T>,
 ): Promise<void> {
   if (process.env.NODE_ENV === 'development') {
     console.log(`[Cache] Warming cache for ${productIds.length} products`);

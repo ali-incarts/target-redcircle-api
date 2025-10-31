@@ -59,22 +59,29 @@ function handleApiError(error: unknown, context?: string): ApiError {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
     const status = axiosError.response?.status;
-    const data = axiosError.response?.data as any;
+    const data = axiosError.response?.data as unknown;
+
+    // Type guard helper for error response
+    const isErrorResponse = (d: unknown): d is { error?: { code?: string } } => (
+      typeof d === 'object' && d !== null
+    );
+
+    const errorCode = isErrorResponse(data) ? data.error?.code : undefined;
 
     // RedCircle API error codes
-    if (status === 404 || data?.error?.code === 'PRODUCT_NOT_FOUND') {
+    if (status === 404 || errorCode === 'PRODUCT_NOT_FOUND') {
       return new ApiError(
         `Product not found${context ? `: ${context}` : ''}`,
         'PRODUCT_NOT_FOUND',
-        { context, status }
+        { context, status },
       );
     }
 
-    if (status === 429 || data?.error?.code === 'RATE_LIMIT_EXCEEDED') {
+    if (status === 429 || errorCode === 'RATE_LIMIT_EXCEEDED') {
       return new ApiError(
         'Rate limit exceeded',
         'RATE_LIMIT_EXCEEDED',
-        { context, retryAfter: axiosError.response?.headers['retry-after'] }
+        { context, retryAfter: axiosError.response?.headers['retry-after'] },
       );
     }
 
@@ -82,21 +89,21 @@ function handleApiError(error: unknown, context?: string): ApiError {
       return new ApiError(
         'Invalid API key or unauthorized',
         'UNAUTHORIZED',
-        { context, status }
+        { context, status },
       );
     }
 
     return new ApiError(
       axiosError.message,
       status || 'NETWORK_ERROR',
-      { context, originalError: axiosError.message }
+      { context, originalError: axiosError.message },
     );
   }
 
   return new ApiError(
     'Unknown error occurred',
     'UNKNOWN_ERROR',
-    { context, originalError: String(error) }
+    { context, originalError: String(error) },
   );
 }
 
@@ -124,7 +131,7 @@ export async function checkStoreStock(
   tcin: string,
   zipCode: string,
   storeId?: string,
-  options?: ApiRequestOptions
+  options?: ApiRequestOptions,
 ): Promise<TargetStoreStockResponse> {
   // Check cache first (unless explicitly skipped)
   if (!options?.skipCache) {
@@ -187,7 +194,7 @@ export async function checkBulkStoreStock(
   tcins: string[],
   zipCode: string,
   storeId?: string,
-  options?: ApiRequestOptions
+  options?: ApiRequestOptions,
 ): Promise<Map<string, TargetStoreStockResponse>> {
   if (process.env.NODE_ENV === 'development') {
     console.log(`[Target API] Checking bulk stock for ${tcins.length} products`);
@@ -246,7 +253,7 @@ export async function checkBulkStoreStock(
  */
 export async function getProductByTcin(
   tcin: string,
-  options?: ApiRequestOptions
+  options?: ApiRequestOptions,
 ): Promise<TargetProductResponse> {
   // Check cache first
   if (!options?.skipCache) {
@@ -292,7 +299,7 @@ export async function getProductByTcin(
  */
 export async function getBulkProducts(
   tcins: string[],
-  options?: ApiRequestOptions
+  options?: ApiRequestOptions,
 ): Promise<Map<string, TargetProductResponse>> {
   if (process.env.NODE_ENV === 'development') {
     console.log(`[Target API] Fetching ${tcins.length} product details`);

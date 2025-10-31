@@ -42,7 +42,7 @@ import { generateProductUrl } from '../target/api';
 export async function selectAvailableProducts(
   request: SmartSelectionRequest,
   zipCode: string,
-  storeId?: string
+  storeId?: string,
 ): Promise<SmartSelectionResponse> {
   if (process.env.NODE_ENV === 'development') {
     console.log('[Product Selector] Starting smart selection');
@@ -84,7 +84,7 @@ export async function selectAvailableProducts(
     selectionResult,
     request.longLink,
     request.customUrl,
-    request.allowPdp
+    request.allowPdp,
   );
 
   // Step 5: Log analytics events
@@ -136,7 +136,7 @@ export async function selectAvailableProducts(
  * @returns Flat array of all unique product IDs
  */
 function extractAllProductIds(
-  backups: Array<{ primaryId: string; backupIds: string[] }>
+  backups: Array<{ primaryId: string; backupIds: string[] }>,
 ): string[] {
   const allIds = new Set<string>();
 
@@ -165,7 +165,7 @@ function extractAllProductIds(
  */
 function performProductSelection(
   backups: Array<{ primaryId: string; backupIds: string[] }>,
-  availabilityMap: Map<string, ProductAvailability>
+  availabilityMap: Map<string, ProductAvailability>,
 ): ProductSelectionResult {
   const selectedProducts: SelectedProduct[] = [];
   const backupProductsUsed: BackupProductUsed[] = [];
@@ -261,7 +261,7 @@ function buildRedirectUrl(
   selectionResult: ProductSelectionResult,
   longLink: string,
   customUrl?: string,
-  allowPdp?: boolean
+  allowPdp?: boolean,
 ): string {
   const { selectedProducts } = selectionResult;
 
@@ -281,7 +281,7 @@ function buildRedirectUrl(
   if (selectedProducts.length > 1) {
     if (process.env.NODE_ENV === 'development') {
       console.log(
-        '[Product Selector] Multiple products selected, but Target does not support cart URLs. Using fallback.'
+        '[Product Selector] Multiple products selected, but Target does not support cart URLs. Using fallback.',
       );
     }
     return customUrl || longLink;
@@ -302,7 +302,7 @@ function buildRedirectUrl(
 function determineCartUrlType(
   selectionResult: ProductSelectionResult,
   customUrl?: string,
-  allowPdp?: boolean
+  allowPdp?: boolean,
 ): 'pdp' | 'longLink' | 'custom' {
   if (selectionResult.selectedProducts.length === 0) {
     return customUrl ? 'custom' : 'longLink';
@@ -327,7 +327,7 @@ function determineCartUrlType(
  */
 function logAnalyticsEvents(
   request: SmartSelectionRequest,
-  selectionResult: ProductSelectionResult
+  selectionResult: ProductSelectionResult,
 ): void {
   // Log substitution events
   selectionResult.backupProductsUsed.forEach((substitution) => {
