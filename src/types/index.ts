@@ -84,6 +84,184 @@ export interface SmartSelectionResponse {
 // ============================================================================
 
 /**
+ * Product details from Target RedCircle API
+ */
+export interface TargetProductDetails {
+  Tcin: string;
+  Title: string;
+  Link: string;
+  Main_image?: string;
+  Images?: string[];
+  Videos?: Array<{
+    video_url: string;
+    width: number;
+    height: number;
+  }>;
+  Brand?: string;
+  Brand_link?: string;
+  Rating?: number;
+  Ratings_total?: number;
+  Description?: string;
+  Feature_bullets?: string[];
+  Specifications?: Record<string, string>;
+  Breadcrumbs?: Array<{
+    name: string;
+    link: string;
+  }>;
+  Price?: {
+    value: number;
+    currency: string;
+    currency_symbol: string;
+  };
+  Was_price?: {
+    value: number;
+    currency: string;
+    currency_symbol: string;
+  };
+  Availability?: {
+    raw: string;
+    in_stock: boolean;
+  };
+  Fulfillment?: {
+    pickup?: boolean;
+    delivery?: boolean;
+    shipping?: boolean;
+  };
+  Variants?: Array<{
+    tcin: string;
+    swatch?: {
+      url: string;
+      type: string;
+    };
+    selected?: boolean;
+  }>;
+  Upc?: string;
+  Dpci?: string;
+  Weight?: string;
+  Dimensions?: string;
+}
+
+/**
+ * Product response from RedCircle API (type=product)
+ */
+export interface TargetProductFullResponse {
+  product?: TargetProductDetails;
+  request_info?: {
+    success: boolean;
+    credits_used: number;
+    credits_remaining?: number;
+  };
+  request_metadata?: {
+    created_at: string;
+    processed_at: string;
+    total_time_taken: number;
+    target_url: string;
+  };
+  request_parameters?: {
+    type: string;
+    tcin?: string;
+    gtin?: string;
+  };
+  location_info?: {
+    address: string;
+    city: string;
+    state: string;
+    zipcode: string;
+    store_name: string;
+    store_id: string;
+  };
+}
+
+/**
+ * Search result item from Target RedCircle API
+ */
+export interface TargetSearchResultItem {
+  position: number;
+  product: {
+    title: string;
+    link: string;
+    tcin: string;
+    dpci?: string;
+    brand?: string;
+    main_image?: string;
+    images?: string[];
+    videos?: string[];
+    rating?: number;
+    ratings_total?: number;
+  };
+  offers: {
+    primary: {
+      price: number;
+      currency_symbol: string;
+      id?: string;
+    };
+    all_offers?: Array<{
+      price: number;
+      seller_name: string;
+    }>;
+  };
+  fulfillment?: string;
+  seller?: {
+    name: string;
+    id: string;
+  };
+}
+
+/**
+ * Search response from RedCircle API (type=search)
+ */
+export interface TargetSearchResponse {
+  search_results?: TargetSearchResultItem[];
+  pagination?: {
+    current: {
+      page: number;
+      link: string;
+    };
+    next?: {
+      page: number;
+      link: string;
+    };
+    total_pages: number;
+    total_results: number;
+  };
+  facets?: Array<{
+    name: string;
+    display_name: string;
+    values: Array<{
+      name: string;
+      id: string;
+      count?: number;
+    }>;
+  }>;
+  categories?: Array<{
+    name: string;
+    link: string;
+    category_id: string;
+  }>;
+  related_queries?: Array<{
+    query: string;
+    link: string;
+  }>;
+  request_info?: {
+    success: boolean;
+    credits_used: number;
+    credits_remaining?: number;
+  };
+  request_metadata?: {
+    created_at: string;
+    processed_at: string;
+    total_time_taken: number;
+    target_url: string;
+  };
+  request_parameters?: {
+    type: string;
+    search_term: string;
+    page?: number;
+    sort_by?: string;
+  };
+}
+
+/**
  * Store stock result from Target RedCircle API
  */
 export interface TargetStoreStock {

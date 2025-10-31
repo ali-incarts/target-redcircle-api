@@ -53,6 +53,10 @@ Requires RedCircle API key configured via environment variable.
         description: 'Product availability and smart selection endpoints',
       },
       {
+        name: 'Products',
+        description: 'Product information retrieval and search endpoints',
+      },
+      {
         name: 'Info',
         description: 'API information and metadata',
       },
@@ -109,7 +113,7 @@ Requires RedCircle API key configured via environment variable.
         },
         SmartSelectRequest: {
           type: 'object',
-          required: ['shortLink', 'longLink', 'zipCode'],
+          required: ['shortLink', 'longLink', 'backups', 'zipCode'],
           properties: {
             shortLink: {
               type: 'string',
@@ -124,11 +128,13 @@ Requires RedCircle API key configured via environment variable.
             backups: {
               type: 'array',
               items: { $ref: '#/components/schemas/BackupMapping' },
-              description: 'Optional backup product mappings for automatic substitution',
+              minItems: 1,
+              description: 'Backup product mappings for automatic substitution. Must contain at least one mapping.',
             },
             zipCode: {
               type: 'string',
               example: '04457',
+              pattern: '^[0-9]{5}$',
               description: '5-digit ZIP code for stock availability checking',
             },
             storeId: {
@@ -148,33 +154,57 @@ Requires RedCircle API key configured via environment variable.
             },
           },
         },
-        ProductInfo: {
+        BackupProductUsed: {
           type: 'object',
+          required: ['originalId', 'replacementId', 'reason'],
           properties: {
-            id: {
+            originalId: {
+              type: 'string',
+              example: '12345678',
+              description: 'Original primary product TCIN that was unavailable',
+            },
+            replacementId: {
               type: 'string',
               example: '87654321',
-              description: 'Target TCIN',
+              description: 'Backup product TCIN that was substituted',
             },
-            title: {
+            reason: {
               type: 'string',
-              example: 'Sample Product Name',
-              description: 'Product title',
+              enum: ['OUT_OF_STOCK', 'PRIMARY_UNUSABLE'],
+              example: 'OUT_OF_STOCK',
+              description: 'Reason for substitution',
             },
-            url: {
+          },
+        },
+        CartOptionsSummary: {
+          type: 'object',
+          required: ['mode', 'includeStoreId', 'fallbackApplied', 'finalType'],
+          properties: {
+            mode: {
               type: 'string',
-              example: 'https://www.target.com/p/-/A-87654321',
-              description: 'Product page URL',
+              example: 'auto',
+              description: 'Cart URL generation mode that was used',
             },
-            available: {
+            includeStoreId: {
+              type: 'string',
+              example: 'never',
+              description: 'Store ID inclusion policy (never/auto/always)',
+            },
+            fallbackApplied: {
               type: 'boolean',
-              example: true,
-              description: 'Whether product is available at the specified location',
+              example: false,
+              description: 'Whether fallback logic was applied',
+            },
+            finalType: {
+              type: 'string',
+              example: 'pdp',
+              description: 'Final URL type that was generated',
             },
           },
         },
         SmartSelectResponse: {
           type: 'object',
+          required: ['redirectUrl', 'backupsUsed', 'backupProducts', 'allProductsUnavailable', 'cartUrlType', 'cartOptionsSummary'],
           properties: {
             redirectUrl: {
               type: 'string',
@@ -188,8 +218,8 @@ Requires RedCircle API key configured via environment variable.
             },
             backupProducts: {
               type: 'array',
-              items: { $ref: '#/components/schemas/ProductInfo' },
-              description: 'Details of backup products that were checked',
+              items: { $ref: '#/components/schemas/BackupProductUsed' },
+              description: 'List of backup substitutions that were made',
             },
             allProductsUnavailable: {
               type: 'boolean',
@@ -198,18 +228,17 @@ Requires RedCircle API key configured via environment variable.
             },
             cartUrlType: {
               type: 'string',
-              enum: ['cart', 'pdp', 'custom'],
+              enum: ['pdp', 'longLink', 'custom'],
               example: 'pdp',
-              description: 'Type of URL returned (cart add, product page, or custom fallback)',
+              description: 'Type of URL returned: pdp (product detail page), longLink (original URL), or custom (custom fallback)',
             },
             storeIdAttached: {
               type: 'string',
-              example: '1771',
-              description: 'Store ID included in the URL (if applicable)',
+              nullable: true,
+              description: 'Store ID included in the URL (currently not supported for Target, always null)',
             },
             cartOptionsSummary: {
-              type: 'object',
-              description: 'Summary of cart URL generation options attempted',
+              $ref: '#/components/schemas/CartOptionsSummary',
             },
           },
         },
@@ -257,6 +286,141 @@ Requires RedCircle API key configured via environment variable.
                 details: {
                   type: 'object',
                   description: 'Additional error details (development only)',
+                },
+              },
+            },
+          },
+        },
+        ProductDetails: {
+          type: 'object',
+          properties: {
+            Tcin: {
+              type: 'string',
+              example: '78025470',
+              description: 'Target product TCIN',
+            },
+            Title: {
+              type: 'string',
+              example: 'Sample Product Title',
+            },
+            Link: {
+              type: 'string',
+              example: 'https://www.target.com/p/-/A-78025470',
+            },
+            Brand: {
+              type: 'string',
+              example: 'Example Brand',
+            },
+            Main_image: {
+              type: 'string',
+              example: 'https://example.com/image.jpg',
+            },
+            Rating: {
+              type: 'number',
+              example: 4.5,
+            },
+            Ratings_total: {
+              type: 'number',
+              example: 123,
+            },
+            Price: {
+              type: 'object',
+              properties: {
+                value: { type: 'number', example: 19.99 },
+                currency: { type: 'string', example: 'USD' },
+                currency_symbol: { type: 'string', example: '$' },
+              },
+            },
+            Description: {
+              type: 'string',
+            },
+            Feature_bullets: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            Availability: {
+              type: 'object',
+              properties: {
+                raw: { type: 'string' },
+                in_stock: { type: 'boolean' },
+              },
+            },
+          },
+        },
+        ProductResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
+            data: {
+              $ref: '#/components/schemas/ProductDetails',
+            },
+            request_info: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                credits_used: { type: 'number' },
+                credits_remaining: { type: 'number' },
+              },
+            },
+          },
+        },
+        SearchResultItem: {
+          type: 'object',
+          properties: {
+            position: {
+              type: 'number',
+              example: 1,
+            },
+            product: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                link: { type: 'string' },
+                tcin: { type: 'string' },
+                brand: { type: 'string' },
+                main_image: { type: 'string' },
+                rating: { type: 'number' },
+                ratings_total: { type: 'number' },
+              },
+            },
+            offers: {
+              type: 'object',
+              properties: {
+                primary: {
+                  type: 'object',
+                  properties: {
+                    price: { type: 'number' },
+                    currency_symbol: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+        SearchResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
+            data: {
+              type: 'object',
+              properties: {
+                results: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/SearchResultItem' },
+                },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    current_page: { type: 'number' },
+                    total_pages: { type: 'number' },
+                    total_results: { type: 'number' },
+                  },
                 },
               },
             },

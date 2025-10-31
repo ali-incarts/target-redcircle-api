@@ -9,6 +9,8 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import {
   TargetStoreStockResponse,
   TargetProductResponse,
+  TargetProductFullResponse,
+  TargetSearchResponse,
   ApiError,
   ApiRequestOptions,
 } from '../../types';
@@ -331,6 +333,180 @@ export async function getBulkProducts(
   });
 
   return productMap;
+}
+
+/**
+ * Get full product details by TCIN (extended version)
+ * Returns complete product data including variants, specifications, etc.
+ *
+ * @function
+ * @param {string} tcin - Target TCIN (8-digit product ID)
+ * @param {ApiRequestOptions} [options] - Request options (skipCache, timeout)
+ * @returns {Promise<TargetProductFullResponse>} Full product response with extended details
+ * @throws {ApiError} If request fails or product not found
+ */
+export async function getFullProductByTcin(
+  tcin: string,
+  options?: ApiRequestOptions,
+): Promise<TargetProductFullResponse> {
+  // Check cache first
+  if (!options?.skipCache) {
+    const cacheKey = `full_product_${tcin}`;
+    const cached = getCachedValue<TargetProductFullResponse>(productCache, cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  try {
+    const params = {
+      api_key: API_KEY,
+      type: 'product',
+      tcin,
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Target API] Fetching full product details for TCIN ${tcin}`);
+    }
+
+    const response = await axiosInstance.get<TargetProductFullResponse>('', {
+      params,
+      timeout: options?.timeout || DEFAULT_TIMEOUT,
+    });
+
+    // Cache the result (1 hour TTL)
+    const cacheKey = `full_product_${tcin}`;
+    setCachedValue(productCache, cacheKey, response.data);
+
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, `TCIN ${tcin}`);
+  }
+}
+
+/**
+ * Get product details by UPC/GTIN barcode
+ * Converts UPC to Target TCIN and retrieves product information
+ *
+ * @function
+ * @param {string} gtin - UPC/GTIN barcode
+ * @param {ApiRequestOptions} [options] - Request options
+ * @returns {Promise<TargetProductFullResponse>} Product response
+ * @throws {ApiError} If request fails or product not found
+ *
+ * @example
+ * const product = await getProductByGtin('123456789012');
+ * console.log(product.Product?.Title);
+ * console.log(product.Product?.Tcin);
+ */
+export async function getProductByGtin(
+  gtin: string,
+  options?: ApiRequestOptions,
+): Promise<TargetProductFullResponse> {
+  // Check cache first
+  if (!options?.skipCache) {
+    const cacheKey = `product_gtin_${gtin}`;
+    const cached = getCachedValue<TargetProductFullResponse>(productCache, cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  try {
+    const params = {
+      api_key: API_KEY,
+      type: 'product',
+      gtin,
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Target API] Fetching product by GTIN ${gtin}`);
+    }
+
+    const response = await axiosInstance.get<TargetProductFullResponse>('', {
+      params,
+      timeout: options?.timeout || DEFAULT_TIMEOUT,
+    });
+
+    // Cache the result (1 hour TTL)
+    const cacheKey = `product_gtin_${gtin}`;
+    setCachedValue(productCache, cacheKey, response.data);
+
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, `GTIN ${gtin}`);
+  }
+}
+
+// ============================================================================
+// Product Search API
+// ============================================================================
+
+/**
+ * Search for products on Target
+ * Uses type=search endpoint
+ *
+ * @function
+ * @param {string} searchTerm - Search keyword(s)
+ * @param {Object} [options] - Search options
+ * @param {number} [options.page] - Page number (default: 1)
+ * @param {string} [options.sortBy] - Sort order (e.g., 'best_seller', 'price_low_to_high')
+ * @param {boolean} [options.skipCache] - Skip cache lookup
+ * @param {number} [options.timeout] - Request timeout
+ * @returns {Promise<TargetSearchResponse>} Search results with products, pagination, and facets
+ * @throws {ApiError} If request fails
+ *
+ * @example
+ * const results = await searchProducts('highlighter pens', { page: 1 });
+ * console.log(`Found ${results.pagination?.total_results} results`);
+ * results.search_results?.forEach(item => {
+ *   console.log(`${item.product.title} - $${item.offers.primary.price}`);
+ * });
+ */
+export async function searchProducts(
+  searchTerm: string,
+  options?: ApiRequestOptions & { page?: number; sortBy?: string },
+): Promise<TargetSearchResponse> {
+  const page = options?.page || 1;
+
+  // Check cache first
+  if (!options?.skipCache) {
+    const cacheKey = `search_${searchTerm}_page${page}_${options?.sortBy || 'default'}`;
+    const cached = getCachedValue<TargetSearchResponse>(productCache, cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  try {
+    const params: Record<string, string> = {
+      api_key: API_KEY,
+      type: 'search',
+      search_term: searchTerm,
+      page: page.toString(),
+    };
+
+    if (options?.sortBy) {
+      params.sort_by = options.sortBy;
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Target API] Searching for "${searchTerm}" (page ${page})`);
+    }
+
+    const response = await axiosInstance.get<TargetSearchResponse>('', {
+      params,
+      timeout: options?.timeout || DEFAULT_TIMEOUT,
+    });
+
+    // Cache the result (5 minutes TTL for search results)
+    const cacheKey = `search_${searchTerm}_page${page}_${options?.sortBy || 'default'}`;
+    setCachedValue(productCache, cacheKey, response.data);
+
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, `Search: ${searchTerm}`);
+  }
 }
 
 // ============================================================================

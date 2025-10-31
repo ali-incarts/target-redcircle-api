@@ -8,6 +8,7 @@ Smart product selection backend with automatic backup substitution for Target pr
 - **Setting up?** Continue reading this README
 - **Deploying to production?** See [DEPLOYMENT.md](./DEPLOYMENT.md) - Cloud Run deployment with IAM authentication
 - **API Documentation** Visit `/api-docs` when server is running for interactive Swagger UI
+- **New Product Endpoints** See [NEW_ENDPOINTS.md](./NEW_ENDPOINTS.md) - Product lookup and search capabilities
 - **Found bugs?** Check [FIXES.md](./FIXES.md) for known issues and solutions
 - **Need specs?** See [docs/isntructions-from-walmart-dev.md](./docs/isntructions-from-walmart-dev.md)
 

@@ -12,6 +12,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { smartProductSelect, healthCheck } from './controllers/stock';
+import {
+  getProductByTcin,
+  getProductByUpc,
+  searchProductsHandler,
+} from './controllers/products';
 import { swaggerSpec } from './config/swagger';
 
 // Load environment variables
@@ -111,6 +116,9 @@ app.get('/', (_req: Request, res: Response) => {
     endpoints: {
       health: 'GET /api/health',
       smartSelect: 'POST /api/stock/smart-select',
+      productByTcin: 'GET /api/products/:tcin',
+      productByUpc: 'GET /api/products/upc/:gtin',
+      productSearch: 'GET /api/products/search?q={keyword}',
     },
     documentation: {
       interactive: 'http://localhost:3000/api-docs',
@@ -193,28 +201,45 @@ app.get('/api/health', healthCheck);
  *                   redirectUrl: "https://www.target.com/p/-/A-87654321"
  *                   backupsUsed: true
  *                   backupProducts:
- *                     - id: "87654321"
- *                       title: "Alternative Product"
- *                       url: "https://www.target.com/p/-/A-87654321"
- *                       available: true
+ *                     - originalId: "12345678"
+ *                       replacementId: "87654321"
+ *                       reason: "OUT_OF_STOCK"
  *                   allProductsUnavailable: false
  *                   cartUrlType: "pdp"
- *                   storeIdAttached: "1771"
+ *                   storeIdAttached: null
+ *                   cartOptionsSummary:
+ *                     mode: "auto"
+ *                     includeStoreId: "never"
+ *                     fallbackApplied: false
+ *                     finalType: "pdp"
  *               primaryUsed:
  *                 summary: Primary product available
  *                 value:
  *                   redirectUrl: "https://www.target.com/p/-/A-12345678"
  *                   backupsUsed: false
+ *                   backupProducts: []
  *                   allProductsUnavailable: false
- *                   cartUrlType: "cart"
- *                   storeIdAttached: "1771"
+ *                   cartUrlType: "pdp"
+ *                   storeIdAttached: null
+ *                   cartOptionsSummary:
+ *                     mode: "auto"
+ *                     includeStoreId: "never"
+ *                     fallbackApplied: false
+ *                     finalType: "pdp"
  *               allUnavailable:
  *                 summary: All products unavailable, custom fallback used
  *                 value:
  *                   redirectUrl: "https://fallback.example.com"
  *                   backupsUsed: false
+ *                   backupProducts: []
  *                   allProductsUnavailable: true
  *                   cartUrlType: "custom"
+ *                   storeIdAttached: null
+ *                   cartOptionsSummary:
+ *                     mode: "auto"
+ *                     includeStoreId: "never"
+ *                     fallbackApplied: true
+ *                     finalType: "custom"
  *       400:
  *         description: Invalid request parameters
  *         content:
@@ -237,6 +262,126 @@ app.get('/api/health', healthCheck);
  *                 code: "API_ERROR"
  */
 app.post('/api/stock/smart-select', smartProductSelect);
+
+/**
+ * @swagger
+ * /api/products/{tcin}:
+ *   get:
+ *     summary: Get product details by TCIN
+ *     description: Retrieve comprehensive product information using Target's internal product ID (TCIN)
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: tcin
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^\d{8}$'
+ *         description: 8-digit Target TCIN
+ *         example: '78025470'
+ *     responses:
+ *       200:
+ *         description: Product details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductResponse'
+ *       400:
+ *         description: Invalid TCIN format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Product not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+app.get('/api/products/:tcin', getProductByTcin);
+
+/**
+ * @swagger
+ * /api/products/upc/{gtin}:
+ *   get:
+ *     summary: Get product details by UPC/GTIN
+ *     description: Convert UPC barcode to Target TCIN and retrieve product information
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: gtin
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^\d{8,14}$'
+ *         description: UPC/GTIN barcode (8-14 digits)
+ *         example: '123456789012'
+ *     responses:
+ *       200:
+ *         description: Product details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProductResponse'
+ *       400:
+ *         description: Invalid UPC/GTIN format
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Product not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+app.get('/api/products/upc/:gtin', getProductByUpc);
+
+/**
+ * @swagger
+ * /api/products/search:
+ *   get:
+ *     summary: Search for products
+ *     description: Search Target products by keyword with pagination and sorting options
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search keyword(s)
+ *         example: 'highlighter pens'
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [best_seller, price_low_to_high, price_high_to_low, highest_rated, newest]
+ *         description: Sort order for results
+ *     responses:
+ *       200:
+ *         description: Search results retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SearchResponse'
+ *       400:
+ *         description: Invalid search parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+app.get('/api/products/search', searchProductsHandler);
 
 // ============================================================================
 // Error Handling
