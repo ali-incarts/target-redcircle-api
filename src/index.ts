@@ -10,7 +10,9 @@ import express, {
 } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
 import { smartProductSelect, healthCheck } from './controllers/stock';
+import { swaggerSpec } from './config/swagger';
 
 // Load environment variables
 dotenv.config();
@@ -61,11 +63,45 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // ============================================================================
+// API Documentation
+// ============================================================================
+
+/**
+ * Swagger UI
+ * Serves interactive API documentation at /api-docs
+ */
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Target RedCircle API - Documentation',
+}));
+
+/**
+ * Swagger JSON specification
+ * Returns raw OpenAPI spec at /api-docs.json
+ */
+app.get('/api-docs.json', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// ============================================================================
 // Routes
 // ============================================================================
 
 /**
- * Root endpoint
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API information
+ *     description: Returns basic API metadata and available endpoints
+ *     tags: [Info]
+ *     responses:
+ *       200:
+ *         description: API information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiInfo'
  */
 app.get('/', (_req: Request, res: Response) => {
   res.json({
@@ -76,32 +112,129 @@ app.get('/', (_req: Request, res: Response) => {
       health: 'GET /api/health',
       smartSelect: 'POST /api/stock/smart-select',
     },
-    documentation: 'https://github.com/your-repo/target-redcircle-api',
+    documentation: {
+      interactive: 'http://localhost:3000/api-docs',
+      openapi: 'http://localhost:3000/api-docs.json',
+    },
   });
 });
 
 /**
- * Health check endpoint
- * GET /api/health
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check
+ *     description: Returns server health status, uptime, and configuration info
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Server is healthy and running
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/HealthCheckResponse'
+ *             example:
+ *               status: ok
+ *               timestamp: "2025-10-31T12:00:00.000Z"
+ *               uptime: 3600
+ *               environment: development
+ *               apiKeyConfigured: true
  */
 app.get('/api/health', healthCheck);
 
 /**
- * Smart product selection endpoint
- * POST /api/stock/smart-select
+ * @swagger
+ * /api/stock/smart-select:
+ *   post:
+ *     summary: Smart product selection with backup substitution
+ *     description: |
+ *       Intelligently selects the best available Target product based on inventory.
  *
- * Request body:
- * {
- *   "shortLink": "https://incarts-us.web.app/xyz",
- *   "longLink": "https://www.target.com/...",
- *   "backups": [
- *     { "primaryId": "12345678", "backupIds": ["87654321"] }
- *   ],
- *   "zipCode": "04457",
- *   "storeId": "1771" (optional),
- *   "customUrl": "https://fallback.com" (optional),
- *   "allowPdp": true (optional)
- * }
+ *       **Features:**
+ *       - Checks primary product availability at specified location (ZIP code or store)
+ *       - Automatically substitutes first available backup if primary unavailable
+ *       - Generates optimized cart/PDP URLs with store information
+ *       - Falls back to custom URL if all products unavailable
+ *       - Uses aggressive caching to minimize API costs
+ *
+ *       **Algorithm:**
+ *       1. Check primary product stock at location
+ *       2. If unavailable, iterate through backup products in order
+ *       3. Return first available product with appropriate URL
+ *       4. If all unavailable, return custom fallback URL or original
+ *     tags: [Stock]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SmartSelectRequest'
+ *           example:
+ *             shortLink: "https://incarts-us.web.app/xyz123"
+ *             longLink: "https://www.target.com/p/-/A-12345678"
+ *             backups:
+ *               - primaryId: "12345678"
+ *                 backupIds: ["87654321", "11223344"]
+ *             zipCode: "04457"
+ *             storeId: "1771"
+ *             customUrl: "https://fallback.example.com"
+ *             allowPdp: true
+ *     responses:
+ *       200:
+ *         description: Product selection completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SmartSelectResponse'
+ *             examples:
+ *               backupUsed:
+ *                 summary: Backup product substituted
+ *                 value:
+ *                   redirectUrl: "https://www.target.com/p/-/A-87654321"
+ *                   backupsUsed: true
+ *                   backupProducts:
+ *                     - id: "87654321"
+ *                       title: "Alternative Product"
+ *                       url: "https://www.target.com/p/-/A-87654321"
+ *                       available: true
+ *                   allProductsUnavailable: false
+ *                   cartUrlType: "pdp"
+ *                   storeIdAttached: "1771"
+ *               primaryUsed:
+ *                 summary: Primary product available
+ *                 value:
+ *                   redirectUrl: "https://www.target.com/p/-/A-12345678"
+ *                   backupsUsed: false
+ *                   allProductsUnavailable: false
+ *                   cartUrlType: "cart"
+ *                   storeIdAttached: "1771"
+ *               allUnavailable:
+ *                 summary: All products unavailable, custom fallback used
+ *                 value:
+ *                   redirectUrl: "https://fallback.example.com"
+ *                   backupsUsed: false
+ *                   allProductsUnavailable: true
+ *                   cartUrlType: "custom"
+ *       400:
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 message: "Invalid zipCode format. Must be 5 digits."
+ *                 code: "VALIDATION_ERROR"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 message: "Failed to fetch product data from Target API"
+ *                 code: "API_ERROR"
  */
 app.post('/api/stock/smart-select', smartProductSelect);
 
@@ -168,8 +301,11 @@ function startServer(): void {
     console.log('='.repeat(60));
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Server running on: http://localhost:${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/api/health`);
-    console.log(`Smart select: POST http://localhost:${PORT}/api/stock/smart-select`);
+    console.log(`\n📖 API Documentation: http://localhost:${PORT}/api-docs`);
+    console.log(`OpenAPI Spec: http://localhost:${PORT}/api-docs.json`);
+    console.log('\n🔍 Endpoints:');
+    console.log(`  Health check: GET http://localhost:${PORT}/api/health`);
+    console.log(`  Smart select: POST http://localhost:${PORT}/api/stock/smart-select`);
     console.log('='.repeat(60));
 
     if (process.env.NODE_ENV === 'development') {
