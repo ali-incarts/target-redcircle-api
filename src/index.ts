@@ -7,6 +7,9 @@
 
 // Load environment variables FIRST before any other imports
 import dotenv from 'dotenv';
+
+dotenv.config();
+
 import express, {
   Application, Request, Response, NextFunction,
 } from 'express';
@@ -19,8 +22,6 @@ import {
   searchProductsHandler,
 } from './controllers/products';
 import { swaggerSpec } from './config/swagger';
-
-dotenv.config();
 
 // ============================================================================
 // Server Configuration
