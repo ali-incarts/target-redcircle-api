@@ -8,20 +8,28 @@
 // Load environment variables FIRST before any other imports
 import dotenv from 'dotenv';
 
+// CRITICAL: Must call dotenv.config() before importing any modules that use process.env
+// eslint-disable-next-line import/first
+dotenv.config();
+
+// eslint-disable-next-line import/first
 import express, {
   Application, Request, Response, NextFunction,
 } from 'express';
+// eslint-disable-next-line import/first
 import cors from 'cors';
+// eslint-disable-next-line import/first
 import swaggerUi from 'swagger-ui-express';
+// eslint-disable-next-line import/first
 import { smartProductSelect, healthCheck } from './controllers/stock';
+// eslint-disable-next-line import/first
 import {
   getProductByTcin,
   getProductByUpc,
   searchProductsHandler,
 } from './controllers/products';
+// eslint-disable-next-line import/first
 import { swaggerSpec } from './config/swagger';
-
-dotenv.config();
 
 // ============================================================================
 // Server Configuration
@@ -40,9 +48,10 @@ const app: Application = express();
  */
 app.use(
   cors({
-    origin: process.env.NODE_ENV === 'production'
-      ? process.env.ALLOWED_ORIGINS?.split(',') || []
-      : '*',
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? process.env.ALLOWED_ORIGINS?.split(',') || []
+        : '*',
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
@@ -76,10 +85,14 @@ if (process.env.NODE_ENV === 'development') {
  * Swagger UI
  * Serves interactive API documentation at /api-docs
  */
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Target RedCircle API - Documentation',
-}));
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Target RedCircle API - Documentation',
+  }),
+);
 
 /**
  * Swagger JSON specification
@@ -414,12 +427,11 @@ app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({
     error: {
       code: 'INTERNAL_SERVER_ERROR',
-      message: process.env.NODE_ENV === 'development'
-        ? error.message
-        : 'An unexpected error occurred',
-      stack: process.env.NODE_ENV === 'development'
-        ? error.stack
-        : undefined,
+      message:
+        process.env.NODE_ENV === 'development'
+          ? error.message
+          : 'An unexpected error occurred',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     },
   });
 });
@@ -436,7 +448,7 @@ function startServer(): void {
   if (!process.env.TARGET_API_KEY && process.env.NODE_ENV !== 'test') {
     console.warn(
       '⚠️  WARNING: TARGET_API_KEY not set in environment variables. '
-      + 'API calls will fail. Please set it in your .env file.',
+        + 'API calls will fail. Please set it in your .env file.',
     );
   }
 
@@ -451,7 +463,9 @@ function startServer(): void {
     console.log(`OpenAPI Spec: http://localhost:${PORT}/api-docs.json`);
     console.log('\n🔍 Endpoints:');
     console.log(`  Health check: GET http://localhost:${PORT}/api/health`);
-    console.log(`  Smart select: POST http://localhost:${PORT}/api/stock/smart-select`);
+    console.log(
+      `  Smart select: POST http://localhost:${PORT}/api/stock/smart-select`,
+    );
     console.log('='.repeat(60));
 
     if (process.env.NODE_ENV === 'development') {
