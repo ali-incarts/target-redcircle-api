@@ -1,6 +1,6 @@
 {
   "name": "target-redcircle-api-backend",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Target RedCircle API backend with smart product selection",
   "main": "dist/index.js",
   "scripts": {
