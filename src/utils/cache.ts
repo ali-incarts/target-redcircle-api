@@ -19,7 +19,10 @@ const STOCK_CACHE_TTL = parseInt(process.env.CACHE_TTL_SECONDS || '300', 10);
 /**
  * Product cache TTL: 1 hour (product data changes slowly)
  */
-const PRODUCT_CACHE_TTL = parseInt(process.env.PRODUCT_CACHE_TTL_SECONDS || '3600', 10);
+const PRODUCT_CACHE_TTL = parseInt(
+  process.env.PRODUCT_CACHE_TTL_SECONDS || '3600',
+  10,
+);
 
 // ============================================================================
 // Cache Instances
@@ -74,19 +77,23 @@ export function generateStockCacheKey(
 
 /**
  * Generate cache key for individual product stock
- * Format: stock:{zipCode}:{storeId}:{tcin}
+ * Format: stock:{zipCode}:{tcin}
  *
  * @param zipCode - ZIP code for location
  * @param tcin - Target TCIN
- * @param storeId - Optional store ID
+ * @param _storeId - DEPRECATED: No longer used. Kept for backwards compatibility
  * @returns Cache key string
+ *
+ * @note storeId parameter removed from key as RedCircle API doesn't filter by store.
+ *       All requests for same tcin+zipcode return identical data.
  */
 export function generateProductStockCacheKey(
   zipCode: string,
   tcin: string,
-  storeId?: string,
+  _storeId?: string,
 ): string {
-  return `stock:${zipCode}:${storeId || 'undefined'}:${tcin}`;
+  // _storeId intentionally unused - kept as parameter for backwards compatibility
+  return `stock:${zipCode}:${tcin}`;
 }
 
 /**
@@ -111,7 +118,10 @@ export function generateProductCacheKey(tcin: string): string {
  * @param key - Cache key
  * @returns Cached value or undefined
  */
-export function getCachedValue<T>(cache: NodeCache, key: string): T | undefined {
+export function getCachedValue<T>(
+  cache: NodeCache,
+  key: string,
+): T | undefined {
   const value = cache.get<T>(key);
   if (value !== undefined && process.env.NODE_ENV === 'development') {
     console.log(`[Cache HIT] ${key}`);
@@ -136,9 +146,7 @@ export function setCachedValue<T>(
 ): boolean {
   // Only pass TTL if explicitly provided, otherwise use cache default
   // Note: ttl=0 means "never expire" in node-cache, so we must not pass 0 accidentally
-  const success = ttl !== undefined
-    ? cache.set(key, value, ttl)
-    : cache.set(key, value);
+  const success = ttl !== undefined ? cache.set(key, value, ttl) : cache.set(key, value);
 
   if (success && process.env.NODE_ENV === 'development') {
     const effectiveTTL = ttl !== undefined ? ttl : cache.options.stdTTL;
@@ -184,7 +192,9 @@ export function getCacheStats(cache: NodeCache) {
     keys: cache.keys().length,
     hits: cache.getStats().hits,
     misses: cache.getStats().misses,
-    hitRate: cache.getStats().hits / (cache.getStats().hits + cache.getStats().misses) || 0,
+    hitRate:
+      cache.getStats().hits
+        / (cache.getStats().hits + cache.getStats().misses) || 0,
   };
 }
 

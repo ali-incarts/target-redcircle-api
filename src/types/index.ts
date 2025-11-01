@@ -265,29 +265,43 @@ export interface TargetSearchResponse {
  * Store stock result from Target RedCircle API
  */
 export interface TargetStoreStock {
-  Position: number;
-  Store_name: string;
-  Store_id: string;
-  In_stock: boolean;
-  Stock_level: number;
-  Distance: number;
-  Address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-  };
+  position: number;
+  store_name: string;
+  store_id: string;
+  in_stock: boolean;
+  stock_level?: number;
+  distance: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  phone?: string;
 }
 
 /**
  * Store stock response from RedCircle API
  */
 export interface TargetStoreStockResponse {
-  Store_stock_results?: TargetStoreStock[];
+  store_stock_results?: TargetStoreStock[];
   request_info?: {
     success: boolean;
     credits_used: number;
     credits_remaining?: number;
+  };
+  request_parameters?: {
+    type: string;
+    tcin: string;
+    store_stock_zipcode: string;
+  };
+  request_metadata?: {
+    created_at: string;
+    processed_at: string;
+    total_time_taken: number;
+    target_url: string;
+  };
+  product?: {
+    tcin: string;
+    dpci: string;
   };
 }
 

@@ -59,8 +59,12 @@ export async function checkBatchAvailability(
                          || stockResults.get(productId.toString())
                          || stockResults.get(Number(productId).toString());
 
-        if (!stockData || !stockData.Store_stock_results) {
+        if (!stockData || !stockData.store_stock_results) {
           // Product not found or no stock data
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Availability] ${productId}: No stock data - stockData exists: ${!!stockData}, store_stock_results: ${stockData?.store_stock_results}`);
+          }
+
           const availability: ProductAvailability = {
             productId,
             inStock: false,
@@ -83,7 +87,7 @@ export async function checkBatchAvailability(
         // 1. User-specified store (if provided)
         // 2. First in-stock store (closest by distance)
         // 3. First store in results (even if out of stock)
-        const selectedStore = selectBestStore(stockData.Store_stock_results, storeId);
+        const selectedStore = selectBestStore(stockData.store_stock_results, storeId);
 
         if (!selectedStore) {
           // No stores found
@@ -107,11 +111,11 @@ export async function checkBatchAvailability(
         // Build availability object
         const availability: ProductAvailability = {
           productId,
-          inStock: selectedStore.In_stock && selectedStore.Stock_level > 0,
-          availableQuantity: selectedStore.Stock_level || 0,
-          storeId: selectedStore.Store_id,
-          storeName: selectedStore.Store_name,
-          distance: selectedStore.Distance,
+          inStock: selectedStore.in_stock && (selectedStore.stock_level ?? 0) > 0,
+          availableQuantity: selectedStore.stock_level || 0,
+          storeId: selectedStore.store_id,
+          storeName: selectedStore.store_name,
+          distance: selectedStore.distance,
           offerType: 'TARGET_PRODUCT', // Target doesn't use offer IDs
         };
 
@@ -121,7 +125,7 @@ export async function checkBatchAvailability(
         if (process.env.NODE_ENV === 'development') {
           console.log(
             `[Availability] ${productId}: ${availability.inStock ? 'IN STOCK' : 'OUT OF STOCK'} `
-            + `at ${selectedStore.Store_name} (${selectedStore.Stock_level} units)`,
+            + `at ${selectedStore.store_name} (${selectedStore.stock_level} units)`,
           );
         }
       } catch (error) {
@@ -176,11 +180,11 @@ export async function checkBatchAvailability(
  */
 function selectBestStore(
   stores: Array<{
-    Store_id: string;
-    In_stock: boolean;
-    Stock_level: number;
-    Store_name: string;
-    Distance: number;
+    store_id: string;
+    in_stock: boolean;
+    stock_level?: number;
+    store_name: string;
+    distance: number;
   }>,
   preferredStoreId?: string,
 ) {
@@ -190,14 +194,14 @@ function selectBestStore(
 
   // If user specified a store, try to find it
   if (preferredStoreId) {
-    const userStore = stores.find((s) => s.Store_id === preferredStoreId);
+    const userStore = stores.find((s) => s.store_id === preferredStoreId);
     if (userStore) {
       return userStore;
     }
   }
 
   // Otherwise, find first in-stock store (closest)
-  const inStockStore = stores.find((s) => s.In_stock && s.Stock_level > 0);
+  const inStockStore = stores.find((s) => s.in_stock && (s.stock_level ?? 0) > 0);
   if (inStockStore) {
     return inStockStore;
   }

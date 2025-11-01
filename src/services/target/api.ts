@@ -32,7 +32,9 @@ const BASE_URL = process.env.TARGET_API_BASE_URL || 'https://api.redcircleapi.co
 const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 if (!API_KEY && process.env.NODE_ENV !== 'test') {
-  console.warn('[Target API] WARNING: TARGET_API_KEY not set in environment variables');
+  console.warn(
+    '[Target API] WARNING: TARGET_API_KEY not set in environment variables',
+  );
 }
 
 /**
@@ -64,9 +66,7 @@ function handleApiError(error: unknown, context?: string): ApiError {
     const data = axiosError.response?.data as unknown;
 
     // Type guard helper for error response
-    const isErrorResponse = (d: unknown): d is { error?: { code?: string } } => (
-      typeof d === 'object' && d !== null
-    );
+    const isErrorResponse = (d: unknown): d is { error?: { code?: string } } => typeof d === 'object' && d !== null;
 
     const errorCode = isErrorResponse(data) ? data.error?.code : undefined;
 
@@ -80,33 +80,29 @@ function handleApiError(error: unknown, context?: string): ApiError {
     }
 
     if (status === 429 || errorCode === 'RATE_LIMIT_EXCEEDED') {
-      return new ApiError(
-        'Rate limit exceeded',
-        'RATE_LIMIT_EXCEEDED',
-        { context, retryAfter: axiosError.response?.headers['retry-after'] },
-      );
+      return new ApiError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED', {
+        context,
+        retryAfter: axiosError.response?.headers['retry-after'],
+      });
     }
 
     if (status === 401 || status === 403) {
-      return new ApiError(
-        'Invalid API key or unauthorized',
-        'UNAUTHORIZED',
-        { context, status },
-      );
+      return new ApiError('Invalid API key or unauthorized', 'UNAUTHORIZED', {
+        context,
+        status,
+      });
     }
 
-    return new ApiError(
-      axiosError.message,
-      status || 'NETWORK_ERROR',
-      { context, originalError: axiosError.message },
-    );
+    return new ApiError(axiosError.message, status || 'NETWORK_ERROR', {
+      context,
+      originalError: axiosError.message,
+    });
   }
 
-  return new ApiError(
-    'Unknown error occurred',
-    'UNKNOWN_ERROR',
-    { context, originalError: String(error) },
-  );
+  return new ApiError('Unknown error occurred', 'UNKNOWN_ERROR', {
+    context,
+    originalError: String(error),
+  });
 }
 
 // ============================================================================
@@ -119,32 +115,44 @@ function handleApiError(error: unknown, context?: string): ApiError {
  *
  * @param tcin - Target TCIN (8-digit product ID)
  * @param zipCode - ZIP code for location-based availability
- * @param storeId - Optional specific store ID
+ * @param storeId - DEPRECATED: Not used by API. Store filtering done client-side
  * @param options - Request options
- * @returns Store stock response
+ * @returns Store stock response with up to 20 stores within 50 mile radius
  * @throws ApiError if request fails
  *
  * @example
  * const stock = await checkStoreStock('78025470', '04457');
- * const closestStore = stock.Store_stock_results?.[0];
- * console.log(closestStore?.In_stock); // true/false
+ * const closestStore = stock.store_stock_results?.[0];
+ * console.log(closestStore?.in_stock); // true/false
+ *
+ * @note The storeId parameter is kept for backwards compatibility but is not
+ *       sent to the RedCircle API as it's not supported. Store filtering must
+ *       be done client-side on the returned results.
  */
 export async function checkStoreStock(
   tcin: string,
   zipCode: string,
-  storeId?: string,
+  _storeId?: string,
   options?: ApiRequestOptions,
 ): Promise<TargetStoreStockResponse> {
   // Check cache first (unless explicitly skipped)
+  // Note: We don't include storeId in cache key since API doesn't filter by store
+  // All requests for same tcin+zipcode return the same store list
   if (!options?.skipCache) {
-    const cacheKey = generateProductStockCacheKey(zipCode, tcin, storeId);
-    const cached = getCachedValue<TargetStoreStockResponse>(stockCache, cacheKey);
+    const cacheKey = generateProductStockCacheKey(zipCode, tcin);
+    const cached = getCachedValue<TargetStoreStockResponse>(
+      stockCache,
+      cacheKey,
+    );
     if (cached) {
       return cached;
     }
   }
 
   try {
+    // _storeId parameter is kept for backwards compatibility but not used
+    // RedCircle API doesn't support store filtering - returns all stores within 50 miles
+
     const params: Record<string, string> = {
       api_key: API_KEY,
       type: 'store_stock',
@@ -152,13 +160,18 @@ export async function checkStoreStock(
       store_stock_zipcode: zipCode,
     };
 
-    // Add store ID if provided
-    if (storeId) {
-      params.store_id = storeId;
-    }
+    // Note: store_id is NOT supported by RedCircle store_stock API
+    // The API returns all stores within 50 miles of the zipcode
+    // Store filtering must be done client-side after receiving results
 
     if (process.env.NODE_ENV === 'development') {
+      // Redact API key for security - never log credentials
+      const paramsForLogging = { ...params, api_key: '[REDACTED]' };
+      const url = `${BASE_URL}?${new URLSearchParams(
+        paramsForLogging,
+      ).toString()}`;
       console.log(`[Target API] Checking stock for TCIN ${tcin} in ${zipCode}`);
+      console.log(`[Target API] URL: ${url}`);
     }
 
     const response = await axiosInstance.get<TargetStoreStockResponse>('', {
@@ -166,8 +179,15 @@ export async function checkStoreStock(
       timeout: options?.timeout || DEFAULT_TIMEOUT,
     });
 
-    // Cache the result
-    const cacheKey = generateProductStockCacheKey(zipCode, tcin, storeId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        `[Target API Response] TCIN ${tcin} - RAW RESPONSE:`,
+        JSON.stringify(response.data, null, 2),
+      );
+    }
+
+    // Cache the result (without storeId since API returns same data regardless)
+    const cacheKey = generateProductStockCacheKey(zipCode, tcin);
     setCachedValue(stockCache, cacheKey, response.data);
 
     return response.data;
@@ -189,23 +209,25 @@ export async function checkStoreStock(
  * @example
  * const stocks = await checkBulkStoreStock(['12345', '67890'], '04457');
  * stocks.forEach((stock, tcin) => {
- *   console.log(`${tcin}: ${stock.Store_stock_results?.[0]?.In_stock}`);
+ *   console.log(`${tcin}: ${stock.store_stock_results?.[0]?.in_stock}`);
  * });
  */
 export async function checkBulkStoreStock(
   tcins: string[],
   zipCode: string,
-  storeId?: string,
+  _storeId?: string,
   options?: ApiRequestOptions,
 ): Promise<Map<string, TargetStoreStockResponse>> {
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[Target API] Checking bulk stock for ${tcins.length} products`);
+    console.log(
+      `[Target API] Checking bulk stock for ${tcins.length} products`,
+    );
   }
 
   // Create concurrent requests for all TCINs
   const stockPromises = tcins.map(async (tcin) => {
     try {
-      const stock = await checkStoreStock(tcin, zipCode, storeId, options);
+      const stock = await checkStoreStock(tcin, zipCode, _storeId, options);
       return { tcin, stock, error: null };
     } catch (error) {
       // Don't fail entire batch on individual errors
@@ -260,7 +282,10 @@ export async function getProductByTcin(
   // Check cache first
   if (!options?.skipCache) {
     const cacheKey = generateProductCacheKey(tcin);
-    const cached = getCachedValue<TargetProductResponse>(productCache, cacheKey);
+    const cached = getCachedValue<TargetProductResponse>(
+      productCache,
+      cacheKey,
+    );
     if (cached) {
       return cached;
     }
@@ -352,7 +377,10 @@ export async function getFullProductByTcin(
   // Check cache first
   if (!options?.skipCache) {
     const cacheKey = `full_product_${tcin}`;
-    const cached = getCachedValue<TargetProductFullResponse>(productCache, cacheKey);
+    const cached = getCachedValue<TargetProductFullResponse>(
+      productCache,
+      cacheKey,
+    );
     if (cached) {
       return cached;
     }
@@ -366,7 +394,9 @@ export async function getFullProductByTcin(
     };
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Target API] Fetching full product details for TCIN ${tcin}`);
+      console.log(
+        `[Target API] Fetching full product details for TCIN ${tcin}`,
+      );
     }
 
     const response = await axiosInstance.get<TargetProductFullResponse>('', {
@@ -406,7 +436,10 @@ export async function getProductByGtin(
   // Check cache first
   if (!options?.skipCache) {
     const cacheKey = `product_gtin_${gtin}`;
-    const cached = getCachedValue<TargetProductFullResponse>(productCache, cacheKey);
+    const cached = getCachedValue<TargetProductFullResponse>(
+      productCache,
+      cacheKey,
+    );
     if (cached) {
       return cached;
     }
@@ -471,7 +504,9 @@ export async function searchProducts(
 
   // Check cache first
   if (!options?.skipCache) {
-    const cacheKey = `search_${searchTerm}_page${page}_${options?.sortBy || 'default'}`;
+    const cacheKey = `search_${searchTerm}_page${page}_${
+      options?.sortBy || 'default'
+    }`;
     const cached = getCachedValue<TargetSearchResponse>(productCache, cacheKey);
     if (cached) {
       return cached;
@@ -500,7 +535,9 @@ export async function searchProducts(
     });
 
     // Cache the result (5 minutes TTL for search results)
-    const cacheKey = `search_${searchTerm}_page${page}_${options?.sortBy || 'default'}`;
+    const cacheKey = `search_${searchTerm}_page${page}_${
+      options?.sortBy || 'default'
+    }`;
     setCachedValue(productCache, cacheKey, response.data);
 
     return response.data;
